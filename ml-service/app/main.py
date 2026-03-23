@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import prediccion, health
 from app.services.predictor import cargar_modelo
+from dotenv import load_dotenv
+load_dotenv()
 
 app = FastAPI(
     title="LicitIA — MS2 ML Service",

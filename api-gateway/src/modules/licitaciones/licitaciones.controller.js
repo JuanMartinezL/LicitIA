@@ -7,40 +7,48 @@ const secopClient = axios.create({ timeout: 15000 });
 
 
 // GET /api/licitaciones
-// Consulta contratos activos del SECOP II con filtros opcionales
+// Consulta contratos del SECOP II con filtros opcionales
 
 const getAll = async (req, res, next) => {
   try {
     const {
-      sector, municipio, departamento,
-      cuantia_min, cuantia_max,
+      tipo_contrato, municipio, departamento,
+      valor_min, valor_max, estado,
       limit  = 20,
       offset = 0,
     } = req.query;
 
     // Construir filtro SoQL (lenguaje de consulta de datos.gov.co)
-    const condiciones = ["estado_contrato='Activo'"];
-    if (sector)       condiciones.push(`tipo_de_contrato='${sector.toUpperCase()}'`);
-    if (municipio)    condiciones.push(`ciudad_entidad='${municipio.toUpperCase()}'`);
-    if (departamento) condiciones.push(`departamento_entidad='${departamento.toUpperCase()}'`);
-    if (cuantia_min)  condiciones.push(`cuantia_contrato>=${cuantia_min}`);
-    if (cuantia_max)  condiciones.push(`cuantia_contrato<=${cuantia_max}`);
+    const condiciones = [];
+    if (tipo_contrato) condiciones.push(`tipo_de_contrato='${tipo_contrato}'`);
+    if (municipio)     condiciones.push(`ciudad='${municipio.toUpperCase()}'`);
+    if (departamento)  condiciones.push(`departamento='${departamento}'`);
+    if (valor_min)     condiciones.push(`valor_del_contrato>=${valor_min}`);
+    if (valor_max)     condiciones.push(`valor_del_contrato<=${valor_max}`);
+    if (estado)        condiciones.push(`estado_contrato='${estado}'`);
 
-    const { data } = await secopClient.get(SECOP_URL, {
-      params: {
-        $limit:  Math.min(parseInt(limit), 50),
-        $offset: parseInt(offset),
-        $where:  condiciones.join(' AND '),
-        $select: [
-          'id_contrato', 'nombre_entidad', 'nit_entidad',
-          'departamento_entidad', 'ciudad_entidad',
-          'tipo_de_contrato', 'modalidad_de_contratacion',
-          'cuantia_contrato', 'descripcion_del_proceso',
-          'fecha_de_firma', 'plazo_de_ejecucion',
-        ].join(','),
-        $order: 'fecha_de_firma DESC',
-      },
-    });
+    const params = {
+      $limit:  Math.min(parseInt(limit), 50),
+      $offset: parseInt(offset),
+      $select: [
+        'id_contrato', 'proceso_de_compra',
+        'nombre_entidad', 'nit_entidad',
+        'departamento', 'ciudad',
+        'sector', 'tipo_de_contrato', 'modalidad_de_contratacion',
+        'valor_del_contrato', 'estado_contrato',
+        'objeto_del_contrato', 'descripcion_del_proceso',
+        'fecha_de_firma', 'fecha_de_inicio_del_contrato', 'fecha_de_fin_del_contrato',
+        'duraci_n_del_contrato', 'urlproceso',
+        'es_pyme', 'proveedor_adjudicado',
+      ].join(','),
+      $order: 'fecha_de_firma DESC',
+    };
+
+    if (condiciones.length > 0) {
+      params.$where = condiciones.join(' AND ');
+    }
+
+    const { data } = await secopClient.get(SECOP_URL, { params });
 
     res.json({
       ok:           true,
@@ -80,7 +88,7 @@ const getById = async (req, res, next) => {
 
 
 // GET /api/licitaciones/sectores
-// Lista los sectores disponibles (para poblar selects en el frontend)
+// Lista los tipos de contrato disponibles (para poblar selects en el frontend)
 
 const getSectores = async (req, res, next) => {
   try {
@@ -89,7 +97,7 @@ const getSectores = async (req, res, next) => {
         $select: 'tipo_de_contrato',
         $group:  'tipo_de_contrato',
         $limit:  100,
-        $where:  "tipo_de_contrato IS NOT NULL",
+        $where:  'tipo_de_contrato IS NOT NULL',
       },
     });
 

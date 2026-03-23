@@ -3,6 +3,7 @@ Servicio de predicción del MS2
 Carga el modelo entrenado y genera predicciones con SHAP.
 Mientras el modelo no esté entrenado, usa lógica de reglas (modo mock).
 """
+import os
 import joblib
 import numpy as np
 from pathlib import Path
@@ -11,7 +12,7 @@ from app.services.feature_engineer import (
     construir_features, nombres_features, SECTORES_COMPETIDOS
 )
 
-MODEL_PATH = Path("models/random_forest.pkl")
+MODEL_PATH = Path(os.getenv("MODEL_PATH", "models/model.pkl"))
 
 # Caché del modelo — se carga una vez al iniciar y se reutiliza
 _modelo = None
@@ -23,16 +24,22 @@ def cargar_modelo():
     if _modelo is None and MODEL_PATH.exists():
         try:
             _modelo = joblib.load(MODEL_PATH)
-            print(f" Modelo cargado: {MODEL_PATH}")
+            print(f" Modelo cargado: {MODEL_PATH}") 
         except Exception as e:
             print(f" Error al cargar modelo: {e}")
     return _modelo
 
 
 def _prediccion_con_modelo(datos: LicitacionInput, modelo) -> dict:
-    """Predicción real usando el Random Forest entrenado."""
     features = construir_features(datos)
-    prob     = float(modelo.predict_proba([features])[0][1])
+    proba = modelo.predict_proba([features])[0]
+
+    # Si el modelo solo conoce una clase, usar mock como fallback
+    if len(proba) < 2:
+        print("  Modelo con una sola clase — usando predicción mock")
+        return _prediccion_mock(datos)
+
+    prob = float(proba[0])
 
     # Generar explicación básica de SHAP (simplificado)
     feature_names = nombres_features()

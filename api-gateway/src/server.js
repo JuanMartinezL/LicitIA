@@ -3,7 +3,7 @@ const express     = require('express');
 const cors        = require('cors');
 const morgan      = require('morgan');
 const rateLimit   = require('express-rate-limit');
-const conectarDB  = require('./config/database');
+const connectDB  = require('./config/database');
 const errorHandler = require('./middleware/errorHandler');
 const { verificarSalud } = require('./utils/mlClient');
 

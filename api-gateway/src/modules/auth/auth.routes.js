@@ -3,7 +3,7 @@ const { register, login, me, actualizarPerfil } = require('./auth.controller');
 const { verificarToken } = require('../../middleware/auth');
 
 // Rutas públicas (sin JWT) 
-router.post('/register', register);   // Crear cuenta
+router.post('/registro', register);   // Crear cuenta
 router.post('/login',    login);      // Iniciar sesión
 
 // Rutas privadas (requieren JWT) 

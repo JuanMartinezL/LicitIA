@@ -15,16 +15,19 @@ const getByNit = async (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'NIT inválido' });
     }
 
+    // documento_proveedor = NIT/cédula de quien GANÓ el contrato
+    // (nit_entidad es el NIT de quien PUBLICA el contrato — entidad estatal)
     const { data } = await secopClient.get(SECOP_URL, {
       params: {
-        $where:  `nit_entidad='${nit.trim()}'`,
+        $where:  `documento_proveedor='${nit.trim()}'`,
         $limit:  500,
         $select: [
           'id_contrato', 'nombre_entidad', 'nit_entidad',
-          'cuantia_contrato', 'tipo_de_contrato',
-          'ciudad_entidad', 'departamento_entidad',
+          'valor_del_contrato', 'tipo_de_contrato',
+          'ciudad', 'departamento',
           'estado_contrato', 'fecha_de_firma',
-          'proveedor_seleccionado', 'modalidad_de_contratacion',
+          'proveedor_adjudicado', 'modalidad_de_contratacion',
+          'objeto_del_contrato',
         ].join(','),
         $order: 'fecha_de_firma DESC',
       },
@@ -37,36 +40,36 @@ const getByNit = async (req, res, next) => {
       });
     }
 
-    //  Cálculo de estadísticas 
-    const total    = data.length;
-    const ganados  = data.filter(c => c.estado_contrato === 'Liquidado').length;
-    const activos  = data.filter(c => c.estado_contrato === 'Activo').length;
+    // Cálculo de estadísticas
+    const total   = data.length;
+    const activos = data.filter(c => c.estado_contrato === 'En ejecución').length;
+    const cerrados = data.filter(c => c.estado_contrato === 'Cerrado').length;
 
     const cuantias = data
-      .map(c => parseFloat(c.cuantia_contrato))
+      .map(c => parseFloat(c.valor_del_contrato))
       .filter(n => !isNaN(n) && n > 0);
 
-    const cuantia_total   = cuantias.reduce((a, b) => a + b, 0);
+    const cuantia_total    = cuantias.reduce((a, b) => a + b, 0);
     const cuantia_promedio = cuantias.length ? cuantia_total / cuantias.length : 0;
-    const cuantia_maxima  = cuantias.length ? Math.max(...cuantias) : 0;
+    const cuantia_maxima   = cuantias.length ? Math.max(...cuantias) : 0;
 
-    // Sectores más frecuentes
-    const conteoSectores = {};
+    // Tipos de contrato más frecuentes
+    const conteoTipos = {};
     data.forEach(c => {
       if (c.tipo_de_contrato) {
-        conteoSectores[c.tipo_de_contrato] = (conteoSectores[c.tipo_de_contrato] || 0) + 1;
+        conteoTipos[c.tipo_de_contrato] = (conteoTipos[c.tipo_de_contrato] || 0) + 1;
       }
     });
-    const sectores_activos = Object.entries(conteoSectores)
+    const tipos_contrato = Object.entries(conteoTipos)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
-      .map(([sector, cantidad]) => ({ sector, cantidad }));
+      .map(([tipo, cantidad]) => ({ tipo, cantidad }));
 
     // Ciudades más frecuentes
     const conteoCiudades = {};
     data.forEach(c => {
-      if (c.ciudad_entidad) {
-        conteoCiudades[c.ciudad_entidad] = (conteoCiudades[c.ciudad_entidad] || 0) + 1;
+      if (c.ciudad) {
+        conteoCiudades[c.ciudad] = (conteoCiudades[c.ciudad] || 0) + 1;
       }
     });
     const ciudades_activas = Object.entries(conteoCiudades)
@@ -74,7 +77,7 @@ const getByNit = async (req, res, next) => {
       .slice(0, 5)
       .map(([ciudad, cantidad]) => ({ ciudad, cantidad }));
 
-    // Entidades más frecuentes
+    // Entidades con las que más ha contratado
     const conteoEntidades = {};
     data.forEach(c => {
       if (c.nombre_entidad) {
@@ -90,16 +93,16 @@ const getByNit = async (req, res, next) => {
       ok: true,
       perfil: {
         nit,
+        nombre_empresa: data[0]?.proveedor_adjudicado || 'No disponible',
         resumen: {
           total_contratos:   total,
-          contratos_ganados: ganados,
           contratos_activos: activos,
-          tasa_exito:        total > 0 ? Math.round((ganados / total) * 100) : 0,
+          contratos_cerrados: cerrados,
           cuantia_total:     Math.round(cuantia_total),
           cuantia_promedio:  Math.round(cuantia_promedio),
           cuantia_maxima:    Math.round(cuantia_maxima),
         },
-        sectores_activos,
+        tipos_contrato,
         ciudades_activas,
         entidades_frecuentes,
         ultimos_contratos: data.slice(0, 20),
