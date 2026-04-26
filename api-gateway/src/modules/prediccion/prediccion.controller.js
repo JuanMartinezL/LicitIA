@@ -54,6 +54,7 @@ const analizar = async (req, res, next) => {
       factores_positivos: resultado.factores_positivos || [],
       factores_negativos: resultado.factores_negativos || [],
       recomendaciones:    resultado.recomendaciones    || [],
+      shap_values:        resultado.shap_values        || {},
     });
 
     //Respuesta al frontend 

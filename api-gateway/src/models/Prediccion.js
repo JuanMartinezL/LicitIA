@@ -21,6 +21,7 @@ const PrediccionSchema = new mongoose.Schema(
     factores_positivos: [{ type: String }],
     factores_negativos: [{ type: String }],
     recomendaciones:    [{ type: String }],
+    shap_values:        { type: mongoose.Schema.Types.Mixed }, // Historial de inferencia plot SHAP
   },
   { timestamps: true }
 );

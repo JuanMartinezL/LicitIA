@@ -51,12 +51,15 @@ def _prediccion_con_modelo(datos: LicitacionInput, modelo) -> dict:
     factores_positivos = [n for n, v in contrib_sorted if v > 0][:3]
     factores_negativos = [n for n, v in contrib_sorted if v < 0][:3]
 
+    shap_values = {nombre: float(feat * imp) for nombre, feat, imp in zip(feature_names, features, importancias)}
+
     return {
         "probabilidad":       round(prob, 4),
         "porcentaje":         round(prob * 100),
         "factores_positivos": _humanizar_factores(factores_positivos, "positivo"),
         "factores_negativos": _humanizar_factores(factores_negativos, "negativo"),
         "recomendaciones":    _generar_recomendaciones(datos, prob),
+        "shap_values":        shap_values,
         "modo":               "real",
     }
 
@@ -132,6 +135,7 @@ def _prediccion_mock(datos: LicitacionInput) -> dict:
         "factores_positivos": factores_positivos,
         "factores_negativos": factores_negativos,
         "recomendaciones":    _generar_recomendaciones(datos, prob),
+        "shap_values":        { "cuantia": 0.05, "sector": -0.02, "modalidad": 0.03, "nit_registrado": 0.07 }, # Mock simplificado
         "modo":               "mock",
     }
 
